@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+
+:root {
+  --text: white;
+  --background: #111111;
+  
+  /* Neutral colors */
+  --Neutral-00: #000;
+  --Neutral-5: #181a1b;
+  --Neutral-10: #1c1f21;
+  --Neutral-15: #232729;
+  --Neutral-20: #2a2f31;
+  --Neutral-30: #404547;
+  --Neutral-50: #707577;
+  --Neutral-60: #888d8f;
+  --Neutral-80: #c3c6c7;
+  --Neutral-90: #e1e2e3;
+
+  /* Blue colors */
+  --Blue-500: #1f94ff;
+  --Blue-800: #0f3557;
+
+  /* Green colors */
+  --Green-500: #0d9c53;
+  --Green-700: #025022;
+
+  /* Red colors */
+  --Red-400: #ff9c7a;
+  --Red-500: #ff4600;
+  --Red-600: #e03c00;
+  --Red-700: #bd3000;
+}
+
+html, body {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 16px;
+  color: var(--text);
+  background-color: var(--background);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--Neutral-10);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--Neutral-30);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--Neutral-50);
+}
+
+/* Button Styling */
+button {
+  font-family: 'Google Sans', sans-serif;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--Blue-500);
+  color: white;
+  font-weight: 500;
+}
+
+button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  background-color: var(--Neutral-30);
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+/* Common Layout Elements */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
