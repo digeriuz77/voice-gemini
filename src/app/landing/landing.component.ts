@@ -14,6 +14,7 @@ import { Router, RouterLink } from '@angular/router';
         
         <div class="actions">
           <button class="primary" routerLink="/chat">Start Voice Chat</button>
+          <button class="secondary" routerLink="/screening">Dyslexia Screening</button>
         </div>
       </div>
       
@@ -35,15 +36,30 @@ import { Router, RouterLink } from '@angular/router';
           <h3>Real-time Responses</h3>
           <p>Get instant AI responses as you speak</p>
         </div>
+        
+        <div class="feature-card">
+          <div class="icon">📚</div>
+          <h3>Dyslexia Screening</h3>
+          <p>Interactive assessment for early detection of reading difficulties</p>
+        </div>
       </div>
       
       <div class="info-section">
         <h2>How It Works</h2>
+        <h3>Voice Chat</h3>
         <ol>
           <li>Click "Start Voice Chat" to begin</li>
           <li>Allow microphone access when prompted</li>
           <li>Speak naturally to the assistant</li>
           <li>The assistant will respond with audio and text</li>
+        </ol>
+        
+        <h3>Dyslexia Screening</h3>
+        <ol>
+          <li>Click "Dyslexia Screening" to begin</li>
+          <li>Select age group and accessibility preferences</li>
+          <li>Complete the interactive questionnaire and activities</li>
+          <li>Receive personalized results and recommendations</li>
         </ol>
       </div>
     </div>
@@ -53,7 +69,7 @@ import { Router, RouterLink } from '@angular/router';
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
-      color: #e1e2e3;
+      color: var(--text-color);
     }
     
     .hero {
@@ -67,13 +83,13 @@ import { Router, RouterLink } from '@angular/router';
     h1 {
       font-size: 3rem;
       margin-bottom: 16px;
-      color: #1f94ff;
+      color: var(--primary-color);
       line-height: 1.2;
     }
     
     .subtitle {
       font-size: 1.2rem;
-      color: #c3c6c7;
+      color: var(--secondary-text);
       max-width: 600px;
       margin-bottom: 40px;
     }
@@ -84,7 +100,7 @@ import { Router, RouterLink } from '@angular/router';
     }
     
     button.primary {
-      background-color: #1f94ff;
+      background-color: var(--primary-color);
       color: white;
       font-size: 1.1rem;
       padding: 12px 24px;
@@ -99,7 +115,24 @@ import { Router, RouterLink } from '@angular/router';
     button.primary:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
-      background-color: #2a9fff;
+      filter: brightness(110%);
+    }
+    
+    button.secondary {
+      background-color: transparent;
+      color: var(--primary-color);
+      font-size: 1.1rem;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 2px solid var(--primary-color);
+      transition: all 0.2s ease;
+    }
+    
+    button.secondary:hover {
+      transform: translateY(-2px);
+      background-color: rgba(31, 148, 255, 0.1);
     }
     
     .features {
@@ -111,7 +144,7 @@ import { Router, RouterLink } from '@angular/router';
     }
     
     .feature-card {
-      background-color: #232729;
+      background-color: var(--card-background);
       border-radius: 16px;
       padding: 24px;
       width: 300px;
@@ -132,16 +165,16 @@ import { Router, RouterLink } from '@angular/router';
     .feature-card h3 {
       margin-bottom: 12px;
       font-size: 1.4rem;
-      color: #1f94ff;
+      color: var(--primary-color);
     }
     
     .feature-card p {
-      color: #888d8f;
+      color: var(--secondary-text);
       line-height: 1.6;
     }
     
     .info-section {
-      background-color: #1c1f21;
+      background-color: var(--section-background);
       border-radius: 16px;
       padding: 32px;
       margin: 40px 0;
@@ -150,7 +183,14 @@ import { Router, RouterLink } from '@angular/router';
     .info-section h2 {
       margin-bottom: 24px;
       font-size: 1.8rem;
-      color: #e1e2e3;
+      color: var(--text-color);
+    }
+    
+    .info-section h3 {
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 1.4rem;
+      color: var(--primary-color);
     }
     
     .info-section ol {
@@ -160,7 +200,7 @@ import { Router, RouterLink } from '@angular/router';
     .info-section li {
       margin-bottom: 12px;
       line-height: 1.6;
-      color: #c3c6c7;
+      color: var(--secondary-text);
     }
   `]
 })

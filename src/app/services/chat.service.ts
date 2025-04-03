@@ -5,6 +5,8 @@ import { MultimodalLiveService } from '../../gemini/gemini-client.service';
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
+  avatar?: string;
+  modifiers?: string[];
   content: string;
   timestamp: Date;
   hasAudio?: boolean;
@@ -21,42 +23,35 @@ export class ChatService {
   streamingMessage$ = this.streamingMessageSubject.asObservable();
   
   constructor(private multimodalLiveService: MultimodalLiveService) {
+
+    // Subscribe to transcription updates
+    this.multimodalLiveService.transcription$.subscribe(transcription => {
+      if(transcription) {
+        this.processUserMessage(transcription, 'default', []);
+      }
+    });
     this.multimodalLiveService.content$.subscribe(content => {
       if (!content) return;
       
       // Handle model turn data (streaming)
-      if (content.modelTurn) {
-        const parts = content.modelTurn.parts || [];
-        let hasAudio = false;
-        
+      if (content.modelTurn && content.modelTurn.parts) {
+        const parts = content.modelTurn.parts;
         for (const part of parts) {
-          // Handle text part
           if (part.text) {
-            const currentText = this.streamingMessageSubject.value;
-            this.streamingMessageSubject.next(currentText + part.text);
-          }
-          
-          // If it's an audio part with a text transcript
-          if (part.textTranscript) {
-            const currentText = this.streamingMessageSubject.value;
-            this.streamingMessageSubject.next(currentText + part.textTranscript);
-          }
-          
-          // Check if contains audio
-          if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
-            hasAudio = true;
-          }
-        }
-        
-        // Track if this message has audio
-        if (hasAudio) {
-          // Add this info to the current message metadata
-          const messages = this.messagesSubject.value;
-          if (messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.role === 'assistant') {
-              lastMessage.hasAudio = true;
-              this.messagesSubject.next([...messages]);
+            this.streamingMessageSubject.next(part.text);
+            const currentMessages = this.messagesSubject.value;
+            let hasAudio = false;
+            // Check if contains audio
+            if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
+                hasAudio = true;
+            }
+            // Track if this message has audio
+            if (hasAudio && currentMessages.length > 0) {
+                const lastMessage = currentMessages[currentMessages.length - 1];
+                if (lastMessage.role === 'assistant') {
+                    lastMessage.hasAudio = true;
+                    this.messagesSubject.next([...currentMessages]);
+                }
             }
           }
         }
@@ -64,10 +59,12 @@ export class ChatService {
       
       // Handle turn completion
       if (content.turnComplete) {
-        const streamedContent = this.streamingMessageSubject.value;
-        if (streamedContent) {
-          this.addMessage('assistant', streamedContent);
-          this.streamingMessageSubject.next('');
+        if(this.streamingMessageSubject.value) {
+          this.addMessage(        
+            'assistant',
+            this.streamingMessageSubject.value
+          )
+          this.streamingMessageSubject.next("")
         }
       }
     });
@@ -78,6 +75,27 @@ export class ChatService {
    */
   getMessages(): ChatMessage[] {
     return this.messagesSubject.value;
+  }
+  
+  
+    /**
+   * Centralized handling of user messages
+   *  Adding to history, then sending to Gemini service.
+   *  This method is now the single entry point for user messages.
+   */
+  private processUserMessage(content: string, avatar: string, modifiers: string[]): void {
+    const messages = [...this.messagesSubject.value];
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      avatar,
+      modifiers,
+      content,
+      timestamp: new Date(),
+    };
+    messages.push(newMessage);
+    this.messagesSubject.next(messages);
+    this.multimodalLiveService.send({ text: content });
   }
   
   /**
@@ -102,12 +120,8 @@ export class ChatService {
    */
   sendMessage(content: string): void {
     if (!content.trim()) return;
-    
-    // Add message to local state
-    this.addMessage('user', content);
-    
-    // Send to Gemini service
-    this.multimodalLiveService.send({ text: content });
+    // Call the new method to process the user message
+    this.processUserMessage(content, 'default', []);
   }
   
   /**

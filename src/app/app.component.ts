@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink } from '@angular/router';
+import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
+import { ThemeService } from './services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -8,7 +10,8 @@ import { RouterOutlet, RouterLink } from '@angular/router';
   imports: [
     CommonModule,
     RouterOutlet,
-    RouterLink
+    RouterLink,
+    ThemeToggleComponent
   ],
   template: `
     <div class="app-container">
@@ -25,9 +28,17 @@ import { RouterOutlet, RouterLink } from '@angular/router';
       <footer>
         <p>Powered by Gemini 2.0 Live API</p>
       </footer>
+      
+      <app-theme-toggle></app-theme-toggle>
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      background-color: var(--background-color, #121212);
+      color: var(--text-color, #e1e2e3);
+    }
+    
     .app-container {
       display: flex;
       flex-direction: column;
@@ -45,7 +56,7 @@ import { RouterOutlet, RouterLink } from '@angular/router';
     }
     
     .logo {
-      color: #1f94ff;
+      color: var(--primary-color, #1f94ff);
       font-size: 1.5rem;
       text-decoration: none;
       font-weight: bold;
@@ -58,12 +69,19 @@ import { RouterOutlet, RouterLink } from '@angular/router';
     footer {
       margin-top: 30px;
       text-align: center;
-      color: #707577;
+      color: var(--secondary-text, #707577);
       font-size: 14px;
       padding: 20px 0;
     }
   `]
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'myapp';
+  
+  constructor(private themeService: ThemeService) {}
+  
+  ngOnInit(): void {
+    // Initialize theme
+    this.themeService.setTheme(this.themeService.getCurrentTheme());
+  }
 }

@@ -348,10 +348,11 @@ export class VoiceChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     console.log('Video stream changed:', stream ? 'Active' : 'Inactive');
   }
   
-  sendTextMessage(text: string): void {
-    if (!this.isConnected || !text.trim()) return;
-    
+  sendTextMessage(text: string): void { 
+    if (!this.isConnected || !text.trim()) return; 
     this.chatService.sendMessage(text);
+    
+    
   }
   
   clearChat(): void {

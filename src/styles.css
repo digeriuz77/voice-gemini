@@ -1,8 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
 
 :root {
-  --text: white;
-  --background: #111111;
+  /* Theme variables - default to dark theme */
+  --background-color: #121212;
+  --text-color: #e1e2e3;
+  --card-background: #232729;
+  --border-color: #444;
+  --input-background: #333;
+  --primary-color: #1f94ff;
+  --secondary-text: #888d8f;
+  --section-background: #1c1f21;
   
   /* Neutral colors */
   --Neutral-00: #000;
@@ -34,8 +41,8 @@
 html, body {
   font-family: 'Google Sans', sans-serif;
   font-size: 16px;
-  color: var(--text);
-  background-color: var(--background);
+  color: var(--text-color);
+  background-color: var(--background-color);
   margin: 0;
   padding: 0;
   overflow-x: hidden;
@@ -52,17 +59,17 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--Neutral-10);
+  background: var(--section-background);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--Neutral-30);
+  background: var(--border-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--Neutral-50);
+  background: var(--secondary-text);
 }
 
 /* Button Styling */
@@ -73,7 +80,7 @@ button {
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: var(--Blue-500);
+  background-color: var(--primary-color);
   color: white;
   font-weight: 500;
 }
@@ -84,7 +91,7 @@ button:hover {
 }
 
 button:disabled {
-  background-color: var(--Neutral-30);
+  background-color: var(--border-color);
   cursor: not-allowed;
   opacity: 0.7;
   transform: none;

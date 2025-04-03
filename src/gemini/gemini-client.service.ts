@@ -7,6 +7,7 @@ import { environment } from '../environments/environment.development';
 type TurnState = 'idle' | 'listening' | 'processing' | 'speaking';
 
 @Injectable({
+
   providedIn: 'root'
 })
 export class MultimodalLiveService {
@@ -37,6 +38,10 @@ export class MultimodalLiveService {
 
   private volumeSubject = new BehaviorSubject<number>(0);
   public volume$ = this.volumeSubject.asObservable();
+  
+  private transcriptionSubject = new BehaviorSubject<string>('');
+  public transcription$ = this.transcriptionSubject.asObservable();
+
 
   // Configurable playback rate adjustment (1.0 = as received; >1.0 speeds up).
   private playbackRate = 1.42; 
@@ -56,6 +61,16 @@ export class MultimodalLiveService {
       console.log('Audio system initialized');
     } catch (error) {
       console.error('Error initializing audio:', error);
+    }
+  }
+
+  private reconnect(): void {
+    console.log('Attempting to reconnect...');
+    if (this.config) {
+      this.connect(this.config)
+        .catch((err) => {
+          console.error('Reconnection failed:', err);
+        });
     }
   }
 
@@ -102,9 +117,15 @@ export class MultimodalLiveService {
               clearTimeout(connectionTimeout);
               resolve();
             } else if (message.serverContent) {
-              console.log('Content received');
+              console.log('Content received', message.serverContent); // Log the full content
               this.contentSubject.next(message.serverContent);
+
+              // Process potential user transcription first
+              this.processTranscriptionResponse(message.serverContent);
+
+              // Then process assistant audio response
               this.processAudioResponse(message.serverContent);
+
             } else if (message.toolCall) {
               console.log('Tool call received:', message.toolCall);
               this.contentSubject.next(message);
@@ -114,16 +135,31 @@ export class MultimodalLiveService {
           }
         };
 
-        this.ws!.onerror = (err) => {
-          console.error('WebSocket error:', err);
-          clearTimeout(connectionTimeout);
+        this.ws!.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          clearTimeout(connectionTimeout);          
           this.connectedSubject.next(false);
-          reject(err);
+          reject(error);
+          // Attempt to reconnect
+          setTimeout(() => {
+            this.reconnect();
+          }, 3000);
         };
 
-        this.ws!.onclose = () => {
+        this.ws!.onclose = (event) => {
           console.log('WebSocket connection closed');
           this.connectedSubject.next(false);
+
+          if (event.wasClean) {
+            console.log(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+          } else {
+            console.error('Connection died');
+            // Attempt to reconnect
+            setTimeout(() => {
+              this.reconnect();
+            }, 3000);
+          }
+          
           if (this.audioChunks.length > 0) {
             this.processAccumulatedAudio();
           }
@@ -138,12 +174,20 @@ export class MultimodalLiveService {
 
   disconnect(): void {
     if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+      try {
+        this.ws.close();
+        this.ws = null;
+      } catch (error) {
+        console.error('Error closing WebSocket:', error);
+      }
     }
     this.connectedSubject.next(false);
     this.config = null;
     if (this.currentSource) {
+      try {
+      } catch (error) {
+        console.error('Error stopping current audio source:', error);
+      }
       this.currentSource.stop();
       this.currentSource = null;
     }
@@ -151,9 +195,9 @@ export class MultimodalLiveService {
   }
 
   /**
-   * Sends a new message, resets any accumulated audio, and sets turn state to listening.
+   * Sends a text message from the client, resets accumulated audio, and sets turn state to listening.
    */
-  send(message: Part | Part[]): void {
+  send(message: Part | Part[]): void { // This is for sending TEXT from client
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error('WebSocket is not connected');
       return;
@@ -181,6 +225,20 @@ export class MultimodalLiveService {
     };
 
     console.log('Sending message');
+    
+    if(clientContentMessage.clientContent.turns.length > 0 && clientContentMessage.clientContent.turns[0].role === 'user' && clientContentMessage.clientContent.turns[0].parts.length > 0) {
+      const parts = clientContentMessage.clientContent.turns[0].parts
+      // This updates transcriptionSubject for *outgoing* text, which might be confusing.
+      // Let's only update transcriptionSubject based on *incoming* transcriptions from the backend.
+      // let transcription = ""
+      // for (const part of parts) {
+      //   if (part.text) { // Check if part has text
+      //      transcription += part.text;
+      //   }
+      // }
+      // this.transcriptionSubject.next(transcription); // Commented out
+    }
+
     this.ws.send(JSON.stringify(clientContentMessage));
     this.updateInputVolume();
   }
@@ -225,32 +283,38 @@ export class MultimodalLiveService {
    */
   private processAudioResponse(serverContent: any): void {
     if (!serverContent?.modelTurn?.parts) return;
+    try {
+      const audioPart = serverContent.modelTurn.parts.find(
+        (part: any) =>
+          part.inlineData &&
+          part.inlineData.mimeType &&
+          part.inlineData.mimeType.startsWith('audio/')
+      );      
+      if (audioPart && audioPart.inlineData?.data) {
+        // Convert base64 audio data to Uint8Array.
+        const binary = atob(audioPart.inlineData.data);
+        const bufferArray = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bufferArray[i] = binary.charCodeAt(i);
+        }
 
-    const audioPart = serverContent.modelTurn.parts.find(
-      (part: any) =>
-        part.inlineData &&
-        part.inlineData.mimeType &&
-        part.inlineData.mimeType.startsWith('audio/')
-    );
-    if (!audioPart || !audioPart.inlineData?.data) return;
+        // Accumulate audio chunk.
+        this.audioChunks.push(bufferArray);
 
-    // Convert base64 audio data to Uint8Array.
-    const binary = atob(audioPart.inlineData.data);
-    const bufferArray = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bufferArray[i] = binary.charCodeAt(i);
+        // Debounce processing: reset timer on each new chunk.
+        if (this.audioProcessingTimer) {
+          clearTimeout(this.audioProcessingTimer);
+        }
+        this.audioProcessingTimer = setTimeout(() => {          
+            this.processAccumulatedAudio();
+        }, 500);        
+      } else {
+        return; // Return early if no audio part is found
+      }
+    } catch (error) {
+      console.error('Error extracting audio:', error);
+      return;
     }
-
-    // Accumulate audio chunk.
-    this.audioChunks.push(bufferArray);
-
-    // Debounce processing: reset timer on each new chunk.
-    if (this.audioProcessingTimer) {
-      clearTimeout(this.audioProcessingTimer);
-    }
-    this.audioProcessingTimer = setTimeout(() => {
-      this.processAccumulatedAudio();
-    }, 500);
 
     // Example VAD integration: simulate a call based on volume.
     // In a real implementation, compute the volume level of the input.
@@ -332,11 +396,19 @@ export class MultimodalLiveService {
     audioBuffer.copyToChannel(float32Data, 0);
 
     // Stop any previous audio playback.
-    if (this.currentSource) {
-      this.currentSource.stop();
-      this.currentSource = null;
+    if (this.currentSource) {      
+      try {
+        this.currentSource.stop();
+        this.currentSource = null;
+      } catch (error) {
+        console.error('Error stopping current audio source:', error);
+      }
     }
-
+    
+    
+    
+    
+    
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
     source.playbackRate.value = this.playbackRate;
@@ -344,11 +416,35 @@ export class MultimodalLiveService {
     source.onended = () => {
       this.currentSource = null;
       this.updateTurnState('idle');
+    }, (error: any) => {
+      console.error('Audio playback error:', error);
     };
     source.start();
     this.currentSource = source;
     this.updateTurnState('speaking');
   }
+
+  /**
+   * Processes incoming serverContent to extract user transcription.
+   */
+  private processTranscriptionResponse(serverContent: any): void {
+    // Look for user text parts, adjust path based on actual backend structure
+    const userTurn = serverContent?.turns?.find((turn: any) => turn.role === 'user');
+    if (userTurn?.parts) {
+      let transcript = '';
+      for (const part of userTurn.parts) {
+        if (part.text) {
+          transcript += part.text + ' ';
+        }
+      }
+      transcript = transcript.trim();
+      if (transcript) {
+        console.log('Received transcription:', transcript);
+        this.transcriptionSubject.next(transcript);
+      }
+    }
+  }
+
 
   private async blobToText(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
